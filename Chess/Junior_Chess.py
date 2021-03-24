@@ -40,8 +40,7 @@ class ChessBoard:
         return [i for j in self.board for i in j if str(i) == name and i.is_team(team)]
 
     def is_attacked(self, xy, team, en_passant):
-        return any(map(lambda x: xy in x.find_moves(self, en_passant),
-                       filter(lambda x: x.is_team(team) and str(x) != 'k', (i for j in self.board for i in j))))
+        return any(xy in i.find_moves(self, en_passant) for j in self.board for i in j if i.is_team(team) and str(i) != 'k')
 
     def console(self, en_passant):
         while True:
@@ -148,20 +147,22 @@ class ChessPiece:
 
 
 def start_game(board=None):
-    if board is None: board = ChessBoard()
-    move = input(str(board) + '\nХод Белых: ').lower()
+    if board is None:
+        board = ChessBoard()
+    move = input(f'{board}\nХод Белых: ').lower()
     history, en_passant = [], None
     while move != 'Give up':
         try:
             if move == 'console':
                 board.console(en_passant)
-                move = input(str(board) + f'\nХод {"Белых" if board.turn else "Чёрных"}: ')
+                move = input(f'{board}\nХод {"Белых" if board.turn else "Чёрных"}: ')
                 continue
             xy_start, xy_end = move.split()
             xy_start = ord(xy_start[0]) - 97, int(xy_start[1]) - 1
             xy_end = ord(xy_end[0]) - 97, int(xy_end[1]) - 1
             if not board[xy_start].is_free() and board[xy_start].is_team(board.turn) and xy_end in board[xy_start].find_moves(board, en_passant):
-                if xy_end == en_passant: board[en_passant[0], en_passant[1] - (1 if board.turn else -1)] = ChessPiece()
+                if xy_end == en_passant:
+                    board[en_passant[0], en_passant[1] - (1 if board.turn else -1)] = ChessPiece()
                 en_passant = board.is_en_passant(xy_start, xy_end)
                 board.castling(xy_start, xy_end)
                 board[xy_start].move(xy_end)
@@ -175,8 +176,9 @@ def start_game(board=None):
                 print('Некоректный ход!')
         except (ValueError, IndexError):
             print('Некоректный вход!')
-        move = input(str(board) + f'\nХод {"Белых" if board.turn else "Чёрных"}: ')
+        move = input(f'{board}\nХод {"Белых" if board.turn else "Чёрных"}: ')
     print(history)
+
 
 if __name__ == '__main__':
     start_game()
