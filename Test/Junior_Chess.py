@@ -178,5 +178,5 @@ def start_game(board=None):
         move = input(str(board) + f'\nХод {"Белых" if board.turn else "Чёрных"}: ')
     print(history)
 
-
-start_game()
+if __name__ == '__main__':
+    start_game()

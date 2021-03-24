@@ -1,6 +1,6 @@
 from random import randint as rd
-from time import sleep as sl
 from tkinter import *
+
 
 def setting():
     global h, w, b
@@ -18,12 +18,14 @@ def setting():
     b.place(x=60, y=105, width=80, height=20)
     Button(text='Confirm', bd=2, command=st).place(x=60, y=140, width=80, height=20)
 
+
 def win_check():
     if disabled == h * w - b:
         Label(window, text='YOU WIN!').place(x=0, y=-30, width=w * 20, height=h * 20 + 30)
-        Label(window, text='Congratulation').place(x=w * 10 - 40, y=h * 10-10, width=80, height=20)
+        Label(window, text='Congratulation').place(x=w * 10 - 40, y=h * 10 - 10, width=80, height=20)
         Button(text='Restart', bg='light gray', command=lambda: setting()).place(x=w * 10 - 40, y=h * 10 + 10, width=80, height=20)
     return disabled < h * w - b
+
 
 def zero_click(x, y):
     global disabled
@@ -37,6 +39,7 @@ def zero_click(x, y):
         disabled += 1
         field[x][y] = 'hl'
     win_check()
+
 
 def zero_click_check(x, y):
     if x > 0 and y > 0 and field[x - 1][y - 1] != 'hl':
@@ -56,6 +59,7 @@ def zero_click_check(x, y):
     if x < w - 1 and y < h - 1 and field[x + 1][y + 1] != 'hl':
         zero_click(x + 1, y + 1)
 
+
 def click(x, y):
     global field_b, f, disabled
     if f:
@@ -74,6 +78,7 @@ def click(x, y):
         Label(window, text='GAME OVER').place(x=0, y=-10, width=w * 20, height=h * 20 + 10)
         Button(text='Restart', bg='light gray', command=lambda: setting()).place(x=w * 10 - 40, y=h * 10, width=80, height=20)
     win_check()
+
 
 def set_bomb(x, y):
     global field_b
@@ -97,6 +102,7 @@ def set_bomb(x, y):
         if x < w - 1 and y < h - 1 and field[x + 1][y + 1] != 'b':
             field[x + 1][y + 1] += 1
 
+
 def st():
     global h, w, b, field, f, disabled
     h, w, b = int(h.get()), int(w.get()), int(b.get())
@@ -106,7 +112,8 @@ def st():
         for j in range(h):
             Button(bg='light gray', command=lambda i=i, j=j: click(i, j)).place(x=i * 20, y=j * 20, width=20, height=20)
 
-h, w, b, f, field_b, disabled, deb, field = 10, 10, 0, 1, 0, 0, 0,[]
+
+h, w, b, f, field_b, disabled, deb, field = 10, 10, 0, 1, 0, 0, 0, []
 
 window = Tk()
 window.title('Сапёр')
