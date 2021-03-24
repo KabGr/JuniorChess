@@ -1,48 +1,46 @@
 class ChessBoard:
-    def __init__(self, symbol=' '):
+    def __init__(self):
         self.turn = True
-        self.sym = symbol
         self.board = [[ChessPiece()] * 8 for _ in range(8)]
-        [self.team_init(team) for team in range(2)]
+        [self.team_init(team) for team in [True, False]]
 
     def __str__(self):
-        s = [self.sym.join(' ABCDEFGH')]
-        return '\n'.join(s + [str(8 - i) + self.sym + self.sym.join(map(lambda x: (str(x).upper() if x.is_team() else str(x)), self.board[7 - i]))
-                              for i in range(8)])
+        s = [' '.join(' ABCDEFGH')]
+        return '\n'.join(s + [f'{8 - i} {" ".join(str(j).upper() if j.is_team() else str(j) for j in self.board[7 - i])}' for i in range(8)])
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: tuple):
         return self.board[key[1]][key[0]]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: tuple, value):
         self.board[key[1]][key[0]] = value
 
-    def team_init(self, team):
+    def team_init(self, team: bool):
         y, piece = (0 if team else 7, 1 if team else 6), [['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p'] * 8]
         for i in range(2): self.board[y[i]] = [ChessPiece(piece[i][x], (x, y[i]), team) for x in range(8)]
 
-    def is_en_passant(self, xy_start, xy_end):
+    def is_en_passant(self, xy_start: tuple, xy_end: tuple) -> (None, tuple):
         if str(self[xy_start]) == 'p' and abs(xy_start[1] - xy_end[1]) == 2:
             return xy_start[0], xy_start[1] + (1 if self.turn else -1)
 
-    def promotion(self, xy_end):
+    def promotion(self, xy_end: tuple):
         if str(self[xy_end]) == 'p' and xy_end[1] == (7 if self.turn else 0):
             prom = input(str(self) + '\nЗамена: ').lower()
             while prom not in ['b', 'r', 'q']:
                 prom = input('Некоректная замена!\nЗамена: ').lower()
             self[xy_end] = ChessPiece(prom, xy_end, self.turn)
 
-    def castling(self, xy_start, xy_end):
+    def castling(self, xy_start: tuple, xy_end: tuple):
         if str(self[xy_start]) == 'k' and abs(xy_start[0] - xy_end[0]) == 2:
             a, b = 7 if xy_end[0] > 4 else 0, 5 if xy_end[0] > 4 else 3
             self[(a, xy_end[1])], self[(b, xy_end[1])] = ChessPiece(), self[(a, xy_end[1])]
 
-    def find_pieces(self, name, team):
+    def find_pieces(self, name: str, team: bool) -> list:
         return [i for j in self.board for i in j if str(i) == name and i.is_team(team)]
 
-    def is_attacked(self, xy, team, en_passant):
+    def is_attacked(self, xy: tuple, team: bool, en_passant: tuple) -> bool:
         return any(xy in i.find_moves(self, en_passant) for j in self.board for i in j if i.is_team(team) and str(i) != 'k')
 
-    def console(self, en_passant):
+    def console(self, en_passant: tuple):
         while True:
             command = input('Console: ').lower()
             if command == 'set':
@@ -82,24 +80,24 @@ class ChessPiece:
         self.team = team
         self.moved = True if name in ['p', 'r', 'k'] else None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name if self.name else '.'
 
-    def is_free(self):
+    def is_free(self) -> bool:
         return not self.name
 
-    def is_team(self, team=True):
+    def is_team(self, team: bool = True) -> bool:
         return self.team is not None and self.team == team
 
-    def is_attacked(self, board, en_passant):
+    def is_attacked(self, board: ChessBoard, en_passant: tuple) -> bool:
         return board.is_attacked(self.xy, board.turn, en_passant)
 
-    def move(self, xy):
+    def move(self, xy: tuple):
         self.xy = xy
         if self.name in ['p', 'r', 'k']:
             self.moved = False
 
-    def find_moves(self, board, en_passant):
+    def find_moves(self, board: ChessBoard, en_passant: tuple) -> list:
         def long_move(xy_lambdas):
             for x_lambda, y_lambda in xy_lambdas:
                 for d in range(1, 8):
@@ -146,7 +144,7 @@ class ChessPiece:
         return moves
 
 
-def start_game(board=None):
+def start_game(board: ChessBoard = None):
     if board is None:
         board = ChessBoard()
     move = input(f'{board}\nХод Белых: ').lower()
