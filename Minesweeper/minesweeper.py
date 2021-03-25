@@ -113,11 +113,12 @@ def st():
             Button(bg='light gray', command=lambda i=i, j=j: click(i, j)).place(x=i * 20, y=j * 20, width=20, height=20)
 
 
-h, w, b, f, field_b, disabled, deb, field = 10, 10, 0, 1, 0, 0, 0, []
+if __name__ == '__main__':
+    h, w, b, f, field_b, disabled, deb, field = 10, 10, 0, 1, 0, 0, 0, []
 
-window = Tk()
-window.title('Сапёр')
-window.geometry('%dx%d' % (w * 20, h * 20))
+    window = Tk()
+    window.title('Сапёр')
+    window.geometry('%dx%d' % (w * 20, h * 20))
 
-setting()
-window.mainloop()
+    setting()
+    window.mainloop()
