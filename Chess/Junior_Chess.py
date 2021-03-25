@@ -64,8 +64,19 @@ class ChessBoard:
                    for x, piece in enumerate(line) if piece.is_team(team) and piece != 'k')
 
     def king_is_attacked(self) -> bool:  # TODO: optimize
-        return next(self.is_attacked((x, y), self.turn) for y, line in enumerate(self.board)
-                    for x, piece in enumerate(line) if piece == 'k' and piece.is_team(not self.turn))
+        king, moves = None, []
+        for y, line in enumerate(self.board):
+            for x, piece in enumerate(line):
+                if not king:
+                    if piece == 'k' and piece.is_team(not self.turn):
+                        if (x, y) in moves:
+                            return True
+                        king = (x, y)
+                    elif piece != 'k' and piece.is_team(self.turn):
+                        moves += find_moves(self, (x, y))
+                elif king in find_moves(self, (x, y)):
+                    return True
+        return False
 
     def draw(self) -> bool:
         ans = input(f'\n{"Белые" if self.turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
@@ -197,12 +208,8 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
             if board.draw():
                 break
             print('Ничья отклонена!')
-        # elif re.match(r'see [a-h][1-8]$', move): # TODO: add step-by-step move
-        #     pass
         elif match(r'[a-h][1-8] [a-h][1-8]$', move):
-            xy_start, xy_end = move.split()
-            xy_start = ord(xy_start[0]) - 97, int(xy_start[1]) - 1
-            xy_end = ord(xy_end[0]) - 97, int(xy_end[1]) - 1
+            xy_start, xy_end = map(lambda x: (ord(x[0]) - 97, int(x[1]) - 1), move.split())
             if not board[xy_start].is_free() and board[xy_start].is_team(board.turn) and xy_end in find_moves(board, xy_start, en_passant):
                 en_passant = board.is_en_passant(xy_start, xy_end, en_passant)
                 board.castling(xy_start, xy_end)
