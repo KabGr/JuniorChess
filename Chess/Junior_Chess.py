@@ -1,3 +1,4 @@
+from re import match
 from typing import Optional
 
 
@@ -62,7 +63,7 @@ class ChessBoard:
         return any(xy in find_moves(self, (x, y), en_passant) for y, line in enumerate(self.board)
                    for x, piece in enumerate(line) if piece.is_team(team) and piece != 'k')
 
-    def king_is_attacked(self) -> bool:
+    def king_is_attacked(self) -> bool:  # TODO: optimize
         return next(self.is_attacked((x, y), self.turn) for y, line in enumerate(self.board)
                     for x, piece in enumerate(line) if piece == 'k' and piece.is_team(not self.turn))
 
@@ -189,32 +190,31 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
     board.print()
     move = input(f'Ход Белых: ').lower()
     check, history, en_passant = '', [], None
-    while move != 'give up':
+    while move != 'give up':  # TODO: add check mate
         if move == 'console':
             board.console(en_passant)
         elif move == 'draw':
             if board.draw():
                 break
             print('Ничья отклонена!')
-        # elif re.match(r'see [a-h][1-8]$', move):
+        # elif re.match(r'see [a-h][1-8]$', move): # TODO: add step-by-step move
         #     pass
+        elif match(r'[a-h][1-8] [a-h][1-8]$', move):
+            xy_start, xy_end = move.split()
+            xy_start = ord(xy_start[0]) - 97, int(xy_start[1]) - 1
+            xy_end = ord(xy_end[0]) - 97, int(xy_end[1]) - 1
+            if not board[xy_start].is_free() and board[xy_start].is_team(board.turn) and xy_end in find_moves(board, xy_start, en_passant):
+                en_passant = board.is_en_passant(xy_start, xy_end, en_passant)
+                board.castling(xy_start, xy_end)
+                board.move(xy_start, xy_end)
+                board.promotion(xy_end)
+                check = f'Шах {"Белым" if not board.turn else "Чёрным"}!\n' if board.king_is_attacked() else ''
+                history.append((f'{"W" if board.turn else "B"}', move))
+                board.turn = not board.turn
+            else:
+                print('Некоректный ход!')
         else:
-            try:
-                xy_start, xy_end = move.split()
-                xy_start = ord(xy_start[0]) - 97, int(xy_start[1]) - 1
-                xy_end = ord(xy_end[0]) - 97, int(xy_end[1]) - 1
-                if not board[xy_start].is_free() and board[xy_start].is_team(board.turn) and xy_end in find_moves(board, xy_start, en_passant):
-                    en_passant = board.is_en_passant(xy_start, xy_end, en_passant)
-                    board.castling(xy_start, xy_end)
-                    board.move(xy_start, xy_end)
-                    board.promotion(xy_end)
-                    check = f'Шах {"Белым" if not board.turn else "Чёрным"}!\n' if board.king_is_attacked() else ''
-                    history.append((f'{"W" if board.turn else "B"}', move))
-                    board.turn = not board.turn
-                else:
-                    print('Некоректный ход!')
-            except (ValueError, IndexError):
-                print('Некоректный вход!')
+            print('Некоректный вход!')
         board.print()
         move = input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
     if move == 'give up':
