@@ -2,9 +2,10 @@ from typing import Optional
 
 
 class ChessBoard:
-    def __init__(self, theme: int = 2):
+    def __init__(self, theme: int = 2, reflection: bool = False):
         self.turn = True
         self.theme = theme
+        self.reflection = reflection
         self.board = [[ChessPiece()] * 8 for _ in range(8)]
         [self.team_init(team) for team in [True, False]]
 
@@ -20,14 +21,15 @@ class ChessBoard:
 
     def print(self, choice=False):
         print()
-        print(f'{self.theme + 1}:' if choice else ' '.join(' ABCDEFGH'))
+        print(f'{self.theme + 1}:' if choice else f"  {'     '.join(' ABCDEFGH')}")
         a, c = (40, 37) if self.theme < 2 else (47, 30)
         b, d = (107, 90) if self.theme % 2 else (100, 97)
-        for i, line in enumerate(self.board[::-1], -8):
-            print('' if choice else -i, sep='', end='' if choice else ' ')
+        for i, line in enumerate(self.board[::-1 if not self.reflection or self.turn else 1], -8 if not self.reflection or self.turn else 1):
+            print('' if choice else -i if not self.reflection or self.turn else i, sep='', end='' if choice else ' ')
             for j, piece in enumerate(line):
-                print(f'\033[1m\033[{a if (j + i + 1) % 2 else b}m\033[{c if piece.is_team() else d}m', piece.upper(), sep='', end=' ')
-            print('\033[0m')
+                print(f'\033[{a if (j + i + 1) % 2 else b}m\033[{c if piece.is_team() else d}m', piece.to_print(), sep='', end='')
+            print(f'\033[0m {"" if choice else -i if not self.reflection or self.turn else i}')
+        print('\n' if choice else f"  {'     '.join(' ABCDEFGH')}")
 
     def team_init(self, team: bool):
         y = (0 if team else 7, 1 if team else 6)
@@ -118,8 +120,13 @@ class ChessPiece:
     def __ne__(self, other: str) -> bool:
         return str(self) != other
 
-    def upper(self) -> str:
-        return str(self).upper()
+    def __bool__(self):
+        return bool(self.name)
+
+    def to_print(self) -> str:
+        white = {'k': ' ♔ ', 'q': ' ♕ ', 'r': ' ♖ ', 'b': ' ♗ ', 'n': ' ♘ ', 'p': ' ♙ '}
+        black = {'k': ' ♚ ', 'q': ' ♛ ', 'r': ' ♜ ', 'b': ' ♝ ', 'n': ' ♞ ', 'p': ' ♟ '}
+        return '   ' if not self else white[str(self)] if self.is_team() else black[str(self)]
 
     def is_free(self) -> bool:
         return not self.name
@@ -176,9 +183,9 @@ def find_moves(board: ChessBoard, xy: tuple[int, int], en_passant: tuple[int, in
     return moves
 
 
-def start_game(theme: int = False, board: ChessBoard = None):
+def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = None):
     if board is None:
-        board = ChessBoard(theme)
+        board = ChessBoard(theme, reflection)
     board.print()
     move = input(f'Ход Белых: ').lower()
     check, history, en_passant = '', [], None
@@ -222,7 +229,6 @@ def choose_theme() -> int:
     for i in range(4):
         board.theme = i
         board.print(True)
-        print()
     a = input('Выберите тему: ')
     while not a.isdigit() or not 1 <= int(a) <= 4:
         a = input('Некоректный вход!\nВыберите тему: ')
@@ -230,4 +236,4 @@ def choose_theme() -> int:
 
 
 if __name__ == '__main__':
-    start_game(choose_theme())
+    start_game()
