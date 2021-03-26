@@ -2,17 +2,17 @@ from re import match
 
 pieces = [{'k': ' ♚ ', 'q': ' ♛ ', 'r': ' ♜ ', 'b': ' ♝ ', 'n': ' ♞ ', 'p': ' ♟ '},
           {'k': ' ♔ ', 'q': ' ♕ ', 'r': ' ♖ ', 'b': ' ♗ ', 'n': ' ♘ ', 'p': ' ♙ '}]
-standard_board = [['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p'] * 8, [''] * 8, [''] * 8,
-                  [''] * 8, [''] * 8, ['p'] * 8, ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']]
+st_board = [['r', '', '', '', 'k', '', '', 'r'], ['p'] * 8, [''] * 8, [''] * 8,
+            [''] * 8, [''] * 8, ['p'] * 8, ['r', '', '', '', 'k', '', '', 'r']]
 
 
 class ChessBoard:
-    def __init__(self, theme: int = 2, reflection: bool = False):
+    def __init__(self, theme: int = 2, reflection: bool = False, board: list[list] = None):
         self.turn = True
         self.theme = theme
         self.reflection = reflection
         self.en_passant = None
-        self.board = [[ChessPiece(standard_board[y][x], y < 4) if standard_board[y][x] else ChessPiece() for x in range(8)] for y in range(8)]
+        self.board = board if board else [[ChessPiece(st_board[y][x], y < 4) if st_board[y][x] else ChessPiece() for x in range(8)] for y in range(8)]
 
     def __getitem__(self, key: tuple[int, int]):
         return self.board[key[1]][key[0]]
@@ -20,30 +20,18 @@ class ChessBoard:
     def __setitem__(self, key: tuple[int, int], value):
         self.board[key[1]][key[0]] = value
 
-    def print(self, choice: bool = False):
-        print()
-        print(f'{self.theme + 1}:' if choice else f"  {'     '.join(' ABCDEFGH')}")
-        a, c = (40, 37) if self.theme < 2 else (47, 30)
-        b, d = (107, 90) if self.theme % 2 else (100, 97)
-        for i, line in enumerate(self.board[::-1 if not self.reflection or self.turn else 1], -8 if not self.reflection or self.turn else 1):
-            print('' if choice else -i if not self.reflection or self.turn else i, sep='', end='' if choice else ' ')
-            for j, piece in enumerate(line):
-                print(f'\033[{a if (j + i + 1) % 2 else b}m\033[{c if piece.is_team() else d}m', piece.to_print(), sep='', end='')
-            print(f'\033[0m {"" if choice else -i if not self.reflection or self.turn else i}')
-        print('\n' if choice else f"  {'     '.join(' ABCDEFGH')}")
-
     def move(self, xy_start: tuple[int, int], xy_end: tuple[int, int]):
         if self[xy_start] == 'p' and xy_end == self.en_passant:
             self[self.en_passant[0], self.en_passant[1] - 2 * self.turn + 1] = ChessPiece()
         self.en_passant = (xy_start[0], xy_start[1] + 2 * self.turn - 1) if self[xy_start] == 'p' and abs(xy_start[1] - xy_end[1]) == 2 else None
         self[xy_start], self[xy_end] = ChessPiece(), self[xy_start]
         if self[xy_end] == 'p' and xy_end[1] == (7 if self.turn else 0):
-            self.print()
+            board_print(self)
             prom = input(f'Замена: ').lower()
             while prom not in ['b', 'r', 'q']:
                 prom = input('Некоректная замена!\nЗамена: ').lower()
             self[xy_end] = ChessPiece(prom, self.turn)
-        elif self[xy_start] == 'k' and abs(xy_start[0] - xy_end[0]) == 2:
+        elif self[xy_end] == 'k' and abs(xy_start[0] - xy_end[0]) == 2:
             a, b = 7 if xy_end[0] > 4 else 0, 5 if xy_end[0] > 4 else 3
             self[(a, xy_end[1])], self[(b, xy_end[1])] = ChessPiece(), self[(a, xy_end[1])]
 
@@ -55,31 +43,31 @@ class ChessBoard:
         return next(self.is_attacked((x, y), self.turn) for y, line in enumerate(self.board)
                     for x, piece in enumerate(line) if piece == 'k' and piece.is_team(not self.turn))
 
-        # king, moves = None, []
-        # for y, line in enumerate(self.board):
-        #     for x, piece in enumerate(line):
-        #         if not king:
-        #             if piece == 'k' and piece.is_team(not self.turn):
-        #                 if (x, y) in moves:
-        #                     return True
-        #                 king = (x, y)
-        #             elif piece != 'k' and piece.is_team(self.turn):
-        #                 moves += find_moves(self, (x, y))
-        #         elif king in find_moves(self, (x, y)):
-        #             return True
-        # return False
+    # king, moves = None, []
+    # for y, line in enumerate(self.board):
+    #     for x, piece in enumerate(line):
+    #         if not king:
+    #             if piece == 'k' and piece.is_team(not self.turn):
+    #                 if (x, y) in moves:
+    #                     return True
+    #                 king = (x, y)
+    #             elif piece != 'k' and piece.is_team(self.turn):
+    #                 moves += find_moves(self, (x, y))
+    #         elif king in find_moves(self, (x, y)):
+    #             return True
+    # return False
 
-    def evolution(self):
-        pass
+    def evolutions(self):
+        for y, line in enumerate(self.board):
+            for x, piece in enumerate(line):
+                if piece and piece.is_team(self.turn):
+                    for move in find_moves(self, (x, y)):
+                        evolution = ChessBoard(board=self.board)
+                        evolution.move((x, y), move)
+                        yield evolution
 
-    def draw(self) -> bool:
-        ans = input(f'\n{"Белые" if self.turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
-        while ans not in ['y', 'yes', 'accept', 'n', 'no', 'deny']:
-            ans = input(f'Некоректный ввод!\n\n{"Белые" if self.turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
-        return ans in ['y', 'yes', 'accept']
-
-    def check_mate(self):
-        pass
+    def check_mate(self) -> bool:
+        return all(i.check() for i in self.evolutions())
 
     def console(self):
         while True:
@@ -190,6 +178,26 @@ def find_moves(board: ChessBoard, xy: tuple[int, int]) -> list[tuple[int, int], 
     return moves
 
 
+def board_print(board: ChessBoard, choice: bool = False):
+    print()
+    print(f'{board.theme + 1}:' if choice else f"  {'     '.join(' ABCDEFGH')}")
+    a, c = (40, 37) if board.theme < 2 else (47, 30)
+    b, d = (107, 90) if board.theme % 2 else (100, 97)
+    for i, line in enumerate(board.board[::-1 if not board.reflection or board.turn else 1], -8 if not board.reflection or board.turn else 1):
+        print('' if choice else -i if not board.reflection or board.turn else i, sep='', end='' if choice else ' ')
+        for j, piece in enumerate(line):
+            print(f'\033[{a if (j + i + 1) % 2 else b}m\033[{c if piece.is_team() else d}m', piece.to_print(), sep='', end='')
+        print(f'\033[0m {"" if choice else -i if not board.reflection or board.turn else i}')
+    print('\n' if choice else f"  {'     '.join(' ABCDEFGH')}")
+
+
+def draw(turn: bool) -> bool:
+    ans = input(f'\n{"Белые" if turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
+    while ans not in ['y', 'yes', 'accept', 'n', 'no', 'deny']:
+        ans = input(f'Некоректный ввод!\n\n{"Белые" if turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
+    return ans in ['y', 'yes', 'accept']
+
+
 def add_history(history: list, move: str, board: ChessBoard, xy_start: tuple[int, int], xy_end: tuple[int, int]):
     if board[xy_start] == 'k' and abs(xy_start[0] - xy_end[0]) == 2:
         move = ('0-0' if xy_start[0] < xy_end[0] else '0-0-0')
@@ -203,10 +211,21 @@ def add_history(history: list, move: str, board: ChessBoard, xy_start: tuple[int
         history[-1] += [move]
 
 
+def choose_theme() -> int:
+    board = ChessBoard()
+    for i in range(4):
+        board.theme = i
+        board_print(board, True)
+    a = input('Выберите тему: ')
+    while not a.isdigit() or not 1 <= int(a) <= 4:
+        a = input('Некоректный вход!\nВыберите тему: ')
+    return int(a) - 1
+
+
 def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = None):
     if board is None:
         board = ChessBoard(theme, reflection)
-    board.print()
+    board_print(board)
     move = input(f'Ход Белых: ').lower()
     check, history = '', []
     while True:  # TODO: add check mate
@@ -215,7 +234,7 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
         elif move == 'give up':
             break
         elif move == 'draw':
-            if board.draw(): break
+            if draw(board.turn): break
             print('Ничья отклонена!')
         elif match(r'[a-h][1-8] [a-h][1-8]$', move):
             xy_start, xy_end = map(lambda x: (ord(x[0]) - 97, int(x[1]) - 1), move.split())
@@ -223,15 +242,15 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
                 add_history(history, move, board, xy_start, xy_end)
                 board.move(xy_start, xy_end)
                 if board.check():
-                    check = f'Шах {"Белым" if not board.turn else "Чёрным"}!\n'
-                    history[-1][not board.turn] += '#'
+                    check = f'Шах {"Белым" if board.turn else "Чёрным"}!\n'
+                    history[-1][board.turn] += '#'
                     if board.check_mate(): break
                 board.turn = not board.turn
             else:
                 print('Некоректный ход!')
         else:
             print('Некоректный вход!')
-        board.print()
+        board_print(board)
         move = input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
     if move == 'give up':
         print(f'\nПобедили {"Белый" if not board.turn else "Чёрный"}!')
@@ -242,17 +261,6 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
     print('History:')
     for i, move in enumerate(history, 1):
         print(f'{i}.', *move, '\033[0m')
-
-
-def choose_theme() -> int:
-    board = ChessBoard()
-    for i in range(4):
-        board.theme = i
-        board.print(True)
-    a = input('Выберите тему: ')
-    while not a.isdigit() or not 1 <= int(a) <= 4:
-        a = input('Некоректный вход!\nВыберите тему: ')
-    return int(a) - 1
 
 
 if __name__ == '__main__':
