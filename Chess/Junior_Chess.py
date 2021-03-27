@@ -21,8 +21,10 @@ class ChessBoard:
     def __setitem__(self, key: tuple[int, int], value):
         self.board[key[1]][key[0]] = value
 
-    def move(self, xy_start: tuple[int, int], xy_end: tuple[int, int]):
-        self[xy_start].moved = False
+    def copy(self):
+        return ChessBoard(turn=self.turn, board=[[self[x, y] for x in range(8)] for y in range(8)])
+
+    def move(self, xy_start: tuple[int, int], xy_end: tuple[int, int], prom: str = None):
         dy = 1 if self.turn else -1
         if self[xy_start] == 'p' and xy_end == self.en_passant:
             self[self.en_passant[0], self.en_passant[1] - dy] = ChessPiece()
@@ -30,15 +32,15 @@ class ChessBoard:
         self[xy_start], self[xy_end] = ChessPiece(), self[xy_start]
         if self[xy_end] == 'p' and xy_end[1] == (7 if self.turn else 0):
             self.print()
-            prom = input(f'Замена: ').lower()
-            while prom not in ['b', 'r', 'q']:
+            prom = prom if prom else input(f'Замена: ').lower()
+            while prom not in ['r', 'n', 'b', 'q']:
                 prom = input('Некоректная замена!\nЗамена: ').lower()
             self[xy_end] = ChessPiece(prom, self.turn)
         elif self[xy_end] == 'k' and abs(xy_start[0] - xy_end[0]) == 2:
             a, b = 7 if xy_end[0] > 4 else 0, 5 if xy_end[0] > 4 else 3
             self[a, xy_end[1]], self[b, xy_end[1]] = ChessPiece(), self[a, xy_end[1]]
         self.found_moves.clear()
-        self.turn = not self.turn
+        return self
 
     def is_attacked(self, xy: tuple[int, int], team: bool) -> bool:
         return any(xy in self.find_moves((x, y)) for y, line in enumerate(self.board)
@@ -48,24 +50,24 @@ class ChessBoard:
         return next(self.is_attacked((x, y), not self.turn) for y, line in enumerate(self.board)
                     for x, piece in enumerate(line) if piece == 'k' and piece.is_team(self.turn))
 
-    def evolution(self, xy_start: tuple[int, int], xy_end: tuple[int, int]):
-        evo = ChessBoard(turn=self.turn, board=self.board)
-        evo.move(xy_start, xy_end)
-        return evo
+    def evolution(self, xy_start: tuple[int, int], xy_end: tuple[int, int], prom: str = None):
+        return self.copy().move(xy_start, xy_end, prom)
 
-    # def evolutions(self):
-    #     for y, line in enumerate(self.board):
-    #         for x, piece in enumerate(line):
-    #             if piece and piece.is_team(self.turn):
-    #                 for move in find_moves(self, (x, y)):
-    #                     evolution = ChessBoard(board=self.board)
-    #                     evolution.move((x, y), move)
-    #                     yield evolution
+    def evolutions(self):
+        for y, line in enumerate(self.board):
+            for x, piece in enumerate(line):
+                if piece.is_team(self.turn):
+                    for move in self.find_moves((x, y)):
+                        if piece == 'p' and move[1] == (7 if self.turn else 0):
+                            for prom in ['r', 'n', 'b', 'q']:
+                                yield self.evolution((x, y), move, prom)
+                        else:
+                            yield self.evolution((x, y), move)
 
     def check_mate(self) -> bool:
-        return False and self.turn  # all(i.check() for i in self.evolutions())
+        return all(evo.check() for evo in self.evolutions())
 
-    def find_moves(self, xy: tuple[int, int]) -> list[tuple[int, int], ...]:  # TODO: optimize
+    def find_moves(self, xy: tuple[int, int]) -> list[tuple[int, int], ...]:
         def long_move(d_xy: list[tuple[int, int], ...]):
             for d_x, d_y in d_xy:
                 for d in range(1, 8):
@@ -210,8 +212,9 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
         board = ChessBoard(theme, reflection)
     board.print()
     move = input(f'Ход Белых: ').lower()
-    check, history = '', []
-    while True:  # TODO: add check mate
+    history = []
+    while True:  # TODO: add 50-move, stalemate
+        check = ''
         if move == 'console':
             board.console()
         elif move == 'give up':
@@ -225,13 +228,20 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
             print('Ничья отклонена!')
         elif match(r'[a-h][1-8] [a-h][1-8]$', move):
             xy_start, xy_end = map(lambda x: (ord(x[0]) - 97, int(x[1]) - 1), move.split())
-            if board[xy_start].is_team(board.turn) and xy_end in board.find_moves(xy_start):
+            if board[xy_start].is_team(board.turn) and xy_end in board.find_moves(xy_start) and not board.evolution(xy_start, xy_end).check():
                 board.add_history(history, move, xy_start, xy_end)
+                p = board[xy_start] == 'p' and xy_end[1] == (7 if board.turn else 0)
                 board.move(xy_start, xy_end)
+                if p:
+                    history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])]
+                board[xy_start].moved = False
+                board.turn = not board.turn
                 if board.check():
                     check = f'Шах {"Белым" if board.turn else "Чёрным"}!\n'
-                    history[-1][board.turn] += '#'
-                    if board.check_mate(): break
+                    if board.check_mate():
+                        history[-1][board.turn] += '#'
+                        break
+                    history[-1][board.turn] += '+'
             else:
                 print('Некоректный ход!')
         else:
@@ -243,7 +253,8 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
     elif move == 'draw':
         print('\nНичья!')
     else:
-        print(f'\nШах и мат!\nПобедили {"Белый" if board.turn else "Чёрный"}!')
+        print(f'\nШах и мат!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
+    input()
     print('History:')
     for i, move in enumerate(history, 1):
         print(f'{i}.', *move, '\033[0m')
