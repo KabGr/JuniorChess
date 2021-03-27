@@ -50,7 +50,7 @@ class ChessBoard:
         return next(self.is_attacked((x, y), not self.turn) for y, line in enumerate(self.board)
                     for x, piece in enumerate(line) if piece == 'k' and piece.is_team(self.turn))
 
-    def evolution(self, xy_start: tuple[int, int], xy_end: tuple[int, int], prom: str = None):
+    def evolution(self, xy_start: tuple[int, int], xy_end: tuple[int, int], prom: str = 'q'):
         return self.copy().move(xy_start, xy_end, prom)
 
     def evolutions(self):
@@ -232,10 +232,9 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
                 board.add_history(history, move, xy_start, xy_end)
                 p = board[xy_start] == 'p' and xy_end[1] == (7 if board.turn else 0)
                 board.move(xy_start, xy_end)
-                if p:
-                    history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])]
                 board[xy_start].moved = False
                 board.turn = not board.turn
+                history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])] if p else ''
                 if board.check():
                     check = f'Шах {"Белым" if board.turn else "Чёрным"}!\n'
                     if board.check_mate():
@@ -249,7 +248,7 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
         board.print()
         move = input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
     if move == 'give up':
-        print(f'\nПобедили {"Белый" if not board.turn else "Чёрный"}!')
+        print(f'\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
     elif move == 'draw':
         print('\nНичья!')
     else:
