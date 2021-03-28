@@ -1,3 +1,4 @@
+from datetime import *
 from re import match
 
 pieces = [{'k': ' ♚ ', 'q': ' ♛ ', 'r': ' ♜ ', 'b': ' ♝ ', 'n': ' ♞ ', 'p': ' ♟ '},
@@ -211,30 +212,49 @@ def choose_theme() -> int:
     return int(a) - 1
 
 
-def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = None):
+def start_game(timer: str = None, theme: int = 3, reflection: bool = False, board: ChessBoard = None):
     if board is None:
         board = ChessBoard(theme, reflection)
-    board.print()
-    move = input(f'Ход Белых: ').lower()
-    history = []
-    while True:  # TODO: add 50-move
-        check = ''
+    add = 0
+    if timer:
+        timer, add = map(int, timer.split('+'))
+        add, timer = timedelta(seconds=add), [timedelta(minutes=timer), timedelta(minutes=timer)]
+    fifty_moves, check, history, start = 100, '', [], False
+    while True:  # TODO: PyGame
+        board.print()
+        if timer:
+            if start: timer[board.turn] -= datetime.now() - start
+            m, s = timer[board.turn].seconds // 60, timer[board.turn].seconds % 60
+            print(f'У вас осталось {f"{m} мин" if m else ""}{" и " if m and s else ""}{f"{s} сек" if s or not m else ""}.')
+        start, move = datetime.now(), input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
         if move == 'console':
             board.console()
         elif move == 'give up':
+            print(f'\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
+            break
+        elif timer[board.turn].total_seconds() <= 0:
+            print(f'\nУ {"Белых" if board.turn else "Чёрных"} закончилась время!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
             break
         elif move == 'draw':
             ans = input(f'\n{"Белые" if board.turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
             while ans not in ['y', 'yes', 'accept', 'n', 'no', 'deny']:
                 ans = input(f'Некоректный ввод!\n\n{"Белые" if board.turn else "Чёрные"} предлагаю ничью, вы принимаете её?: ').lower()
             if ans in ['y', 'yes', 'accept']:
+                print('\nНичья!')
                 break
             print('Ничья отклонена!')
+        elif fifty_moves <= 0:
+            print('\nНичья по правилу 50 ходов!')
+            break
         elif match(r'[a-h][1-8] [a-h][1-8]$', move):
             xy_start, xy_end = map(lambda x: (ord(x[0]) - 97, int(x[1]) - 1), move.split())
             if board[xy_start].is_team(board.turn) and xy_end in board.find_moves(xy_start) and not board.evolution(xy_start, xy_end).check():
+                if timer:
+                    timer[board.turn] += add + start - datetime.now()
+                    start = False
                 board.add_history(history, move, xy_start, xy_end)
                 p = board[xy_start] == 'p' and xy_end[1] == (7 if board.turn else 0)
+                fifty_moves = fifty_moves - 1 if board[xy_start] != 'p' and board[xy_end].is_free() else 100
                 board.move(xy_start, xy_end)
                 board[xy_start].moved = False
                 board.turn = not board.turn
@@ -243,26 +263,17 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
                     check = f'Шах {"Белым" if board.turn else "Чёрным"}!\n'
                     if board.checkmate():
                         history[-1][board.turn] += '#'
+                        print(f'\nШах и мат!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
                         break
                     history[-1][board.turn] += '+'
                 elif board.stalemate():
-                    move = 'stalemate'
+                    print(f'\nПат {"Белым" if board.turn else "Чёрным"}!')
                     break
             else:
                 print('Некоректный ход!')
         else:
             print('Некоректный вход!')
-        board.print()
-        move = input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
 
-    if move == 'give up':
-        print(f'\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
-    elif move == 'draw':
-        print('\nНичья!')
-    elif move == 'stalemate':
-        print(f'\nПат {"Белым" if board.turn else "Чёрным"}!')
-    else:
-        print(f'\nШах и мат {"Белым" if board.turn else "Чёрным"}!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
     input()
     print('История:')
     for i, move in enumerate(history, 1):
@@ -270,4 +281,4 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
 
 
 if __name__ == '__main__':
-    start_game()
+    start_game(timer=input('Таймер: '))
