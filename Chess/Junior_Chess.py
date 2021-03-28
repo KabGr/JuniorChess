@@ -220,13 +220,13 @@ def start_game(timer: str = None, theme: int = 3, reflection: bool = False, boar
         timer, add = map(int, timer.split('+'))
         add, timer = timedelta(seconds=add), [timedelta(minutes=timer), timedelta(minutes=timer)]
     fifty_moves, check, history, start = 100, '', [], False
-    while True:  # TODO: PyGame
+    while True:  # TODO: PyGame, AI
         board.print()
         if timer:
             if start: timer[board.turn] -= datetime.now() - start
             m, s = timer[board.turn].seconds // 60, timer[board.turn].seconds % 60
             print(f'У вас осталось {f"{m} мин" if m else ""}{" и " if m and s else ""}{f"{s} сек" if s or not m else ""}.')
-        start, move = datetime.now(), input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
+        start, move, check = datetime.now(), input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower(), ''
         if move == 'console':
             board.console()
         elif move == 'give up':
@@ -281,4 +281,5 @@ def start_game(timer: str = None, theme: int = 3, reflection: bool = False, boar
 
 
 if __name__ == '__main__':
+    choose_theme()
     start_game(timer=input('Таймер: '))
