@@ -64,8 +64,12 @@ class ChessBoard:
                         else:
                             yield self.evolution((x, y), move)
 
-    def check_mate(self) -> bool:
+    def checkmate(self) -> bool:
         return all(evo.check() for evo in self.evolutions())
+
+    def stalemate(self) -> bool:
+        return not any([move for move in self.find_moves((x, y)) if not self.evolution((x, y), move).check()]
+                       for y, line in enumerate(self.board) for x, piece in enumerate(line) if piece.is_team(self.turn))
 
     def find_moves(self, xy: tuple[int, int]) -> list[tuple[int, int], ...]:
         def long_move(d_xy: list[tuple[int, int], ...]):
@@ -91,7 +95,7 @@ class ChessBoard:
             moves += [(x, y + dy)] if 0 <= y + dy < 8 and self[(x, y + dy)].is_free() else []
             moves += [(x, y + 2 * dy)] if piece.moved and self[(x, y + dy)].is_free() and self[(x, y + 2 * dy)].is_free() else []
             moves += [(x + dx, y + dy) for dx in [-1, 1] if 0 <= x + dx < 8 and 0 <= y + dy < 8 and self[(x + dx, y + dy)].is_team(not team)
-                      and self[(x + dx, y + dy)] != 'k' or (x + dx, y + dy) == self.en_passant]
+                      or (x + dx, y + dy) == self.en_passant]
         elif piece == 'r':
             long_move([(1, 0), (0, 1), (-1, 0), (0, -1)])
         elif piece == 'n':
@@ -213,7 +217,7 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
     board.print()
     move = input(f'Ход Белых: ').lower()
     history = []
-    while True:  # TODO: add 50-move, stalemate
+    while True:  # TODO: add 50-move
         check = ''
         if move == 'console':
             board.console()
@@ -237,26 +241,32 @@ def start_game(theme: int = 3, reflection: bool = False, board: ChessBoard = Non
                 history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])] if p else ''
                 if board.check():
                     check = f'Шах {"Белым" if board.turn else "Чёрным"}!\n'
-                    if board.check_mate():
+                    if board.checkmate():
                         history[-1][board.turn] += '#'
                         break
                     history[-1][board.turn] += '+'
+                elif board.stalemate():
+                    move = 'stalemate'
+                    break
             else:
                 print('Некоректный ход!')
         else:
             print('Некоректный вход!')
         board.print()
         move = input(f'{check}Ход {"Белых" if board.turn else "Чёрных"}: ').lower()
+
     if move == 'give up':
         print(f'\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
     elif move == 'draw':
         print('\nНичья!')
+    elif move == 'stalemate':
+        print(f'\nПат {"Белым" if board.turn else "Чёрным"}!')
     else:
-        print(f'\nШах и мат!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
+        print(f'\nШах и мат {"Белым" if board.turn else "Чёрным"}!\nПобедили {"Белые" if not board.turn else "Чёрные"}!')
     input()
-    print('History:')
+    print('История:')
     for i, move in enumerate(history, 1):
-        print(f'{i}.', *move, '\033[0m')
+        print(f'\033[0m{i}.', *move)
 
 
 if __name__ == '__main__':
