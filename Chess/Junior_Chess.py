@@ -115,7 +115,7 @@ class ChessBoard:
             for d_x, d_y in d_xy:
                 for d in range(1, 8):
                     if not (0 <= x + d_x * d < 8 and 0 <= y + d_y * d < 8): break
-                    if self[x + d_x * d, y + d_y * d].is_free():
+                    if not self[x + d_x * d, y + d_y * d]:
                         moves.append((x + d_x * d, y + d_y * d))
                     elif self[x + d_x * d, y + d_y * d].is_team(not team):
                         moves.append((x + d_x * d, y + d_y * d))
@@ -132,8 +132,8 @@ class ChessBoard:
         moves = []
         if piece == 'p':
             dy = 1 if team else -1
-            moves += [(x, y + dy)] if 0 <= y + dy < 8 and self[(x, y + dy)].is_free() else []
-            moves += [(x, y + 2 * dy)] if (y == 1 if team else y == 6) and self[(x, y + dy)].is_free() and self[(x, y + 2 * dy)].is_free() else []
+            moves += [(x, y + dy)] if 0 <= y + dy < 8 and not self[(x, y + dy)] else []
+            moves += [(x, y + 2 * dy)] if (y == 1 if team else y == 6) and not self[(x, y + dy)] and not self[(x, y + 2 * dy)] else []
             moves += [(x + dx, y + dy) for dx in [-1, 1] if 0 <= x + dx < 8 and 0 <= y + dy < 8 and self[(x + dx, y + dy)].is_team(not team)
                       or (x + dx, y + dy) == self.en_passant]
         elif piece == 'r':
@@ -150,7 +150,7 @@ class ChessBoard:
             moves += [(x + dx, y + dy) for dx, dy in ways if 0 <= x + dx < 8 and 0 <= y + dy < 8 and not self[(x + dx, y + dy)].is_team(team) and
                       not self.is_attacked((x + dx, y + dy), not team)]
             moves += [(2 if dx else 6, y) for dx in [0, 1] if xy in self.not_moved and (0 if dx else 7, y) in self.not_moved and
-                      all(self[(d, y)].is_free() for d in ([1, 2, 3] if dx else [5, 6])) and
+                      all(not self[(d, y)] for d in ([1, 2, 3] if dx else [5, 6])) and
                       all(not self.is_attacked((d, y), not team) for d in ([2, 3, 4] if dx else [4, 5, 6]))]
         self.found_moves[xy] = moves
         return moves
@@ -162,7 +162,7 @@ def add_history(board: ChessBoard, history: list, move: str, xy_start: tuple[int
     elif board[xy_start] != 'p':
         move = pieces[board[xy_start].is_team()][str(board[xy_start])] + move
     move = f'\033[{3 if board.turn else 9}0m' + move
-    move = move.replace(" ", "-" if board[xy_end].is_free() and not (board[xy_start] == "p" and xy_end == board.en_passant) else "x")
+    move = move.replace(" ", "x" if board[xy_end] and board[xy_start] == "p" and xy_end == board.en_passant else "-")
     if board.turn:
         history.append([move])
     else:
@@ -200,7 +200,7 @@ def console(board: ChessBoard):
         elif command == 'moves':
             xy = input('xy: ').lower()
             xy = ord(xy[0]) - 97, int(xy[1]) - 1
-            print(None if board[xy].is_free() else board.find_moves(xy))
+            print(board.find_moves(xy) if board[xy] else None)
         elif command == 'attacked':
             xy, team = input('xy, team: ').lower().split()
             xy, team = (ord(xy[0]) - 97, int(xy[1]) - 1), team == 'w'
@@ -268,7 +268,7 @@ def start_game(timer: str = None, theme: int = 3, reflection: bool = False, boar
                     start = False
                 add_history(board, history, move, xy_start, xy_end)
                 p = board[xy_start] == 'p' and xy_end[1] == (7 if board.turn else 0)
-                fifty_moves = fifty_moves - 1 if board[xy_start] != 'p' and board[xy_end].is_free() else 100
+                fifty_moves = fifty_moves - 1 if board[xy_start] != 'p' and not board[xy_end] else 100
                 board.move(xy_start, xy_end)
                 board.turn = not board.turn
                 history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])] if p else ''
@@ -335,7 +335,7 @@ def start_game_vs_ai(timer: str = None, theme: int = 3, reflection: bool = False
                     start = False
                 add_history(board, history, move, xy_start, xy_end)
                 p = board[xy_start] == 'p' and xy_end[1] == (7 if board.turn else 0)
-                fifty_moves = fifty_moves - 1 if board[xy_start] != 'p' and board[xy_end].is_free() else 100
+                fifty_moves = fifty_moves - 1 if board[xy_start] != 'p' and not board[xy_end] else 100
                 board.move(xy_start, xy_end)
                 board.turn = not board.turn
                 history[-1][board.turn] += pieces[board[xy_end].is_team()][str(board[xy_end])] if p else ''
@@ -361,7 +361,6 @@ def start_game_vs_ai(timer: str = None, theme: int = 3, reflection: bool = False
 
 
 def score(board: ChessBoard):
-    # d = 1 if board.turn else -1
     return sum(board[x, y].price() for x in range(8) for y in range(8))
 
 
