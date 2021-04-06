@@ -1,10 +1,9 @@
 from datetime import *
-from math import inf
 from re import match
 
+price = {'k': 0, 'q': 10, 'r': 5, 'b': 4, 'n': 3, 'p': 1, '': 0}
 pieces = [{'k': ' ♚ ', 'q': ' ♛ ', 'r': ' ♜ ', 'b': ' ♝ ', 'n': ' ♞ ', 'p': ' ♟ '},
           {'k': ' ♔ ', 'q': ' ♕ ', 'r': ' ♖ ', 'b': ' ♗ ', 'n': ' ♘ ', 'p': ' ♙ '}]
-price = {'k': 0, 'q': 10, 'r': 5, 'b': 4, 'n': 3, 'p': 1, '': 0}
 st_board = [['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p'] * 8, [''] * 8, [''] * 8,
             [''] * 8, [''] * 8, ['p'] * 8, ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']]
 
@@ -26,7 +25,7 @@ class ChessPiece:
     def __ne__(self, other: str) -> bool:
         return str(self) != other
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.name)
 
     def is_free(self) -> bool:
@@ -389,5 +388,4 @@ def ai(start: ChessBoard = ChessBoard()):
 
 
 if __name__ == '__main__':
-    print(inf < 1, -inf > -9999999999999)
     ai()
