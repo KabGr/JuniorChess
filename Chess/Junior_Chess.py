@@ -1,11 +1,14 @@
 from datetime import *
+from math import inf
 from re import match
 
 price = {'k': 0, 'q': 10, 'r': 5, 'b': 4, 'n': 3, 'p': 1, '': 0}
 pieces = [{'k': ' ♚ ', 'q': ' ♛ ', 'r': ' ♜ ', 'b': ' ♝ ', 'n': ' ♞ ', 'p': ' ♟ '},
           {'k': ' ♔ ', 'q': ' ♕ ', 'r': ' ♖ ', 'b': ' ♗ ', 'n': ' ♘ ', 'p': ' ♙ '}]
-st_board = [['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p'] * 8, [''] * 8, [''] * 8,
-            [''] * 8, [''] * 8, ['p'] * 8, ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']]
+# st_board = [['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p'] * 8, [''] * 8, [''] * 8,
+#             [''] * 8, [''] * 8, ['p'] * 8, ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']]
+st_board = [['', '', '', 'p', 'k', '', '', ''], [''] * 8, [''] * 8, [''] * 8,
+            [''] * 8, [''] * 8, [''] * 8, ['', '', '', '', 'k', '', '', '']]
 
 
 class ChessPiece:
@@ -218,8 +221,7 @@ def console(board: ChessBoard):
 def choose_theme() -> int:
     board = ChessBoard()
     for i in range(4):
-        board.theme = i
-        bprint(board, choice=True)
+        bprint(board, i, True)
     a = input('Выберите тему: ')
     while not a.isdigit() or not 1 <= int(a) <= 4:
         a = input('Некоректный вход!\nВыберите тему: ')
@@ -234,7 +236,7 @@ def start_game(timer: str = None, theme: int = 3, reflection: bool = False, boar
         timer, add = map(int, timer.split('+'))
         add, timer = timedelta(seconds=add), [timedelta(minutes=timer), timedelta(minutes=timer)]
     fifty_moves, check, history, start = 100, '', [], False
-    while True:  # TODO: PyGame, AI
+    while True:
         bprint(board, theme, reflection)
         if timer:
             if start: timer[board.turn] -= datetime.now() - start
@@ -366,24 +368,31 @@ def score(board: ChessBoard):
 
 def ai(start: ChessBoard = ChessBoard()):
     evos = [start]
-    path = {}
+    path = {start: None}
     st = datetime.now()
     for depth in range(1, 6):
         previous_evos, evos = evos, []
         for board in previous_evos:
-            path[board] = []
             for evo in board.evolutions():
                 evo.turn = not evo.turn
-                path[board].append(evo)
+                path[evo] = board
                 evos.append(evo)
         print(f'Глубина: {depth}')
         if (datetime.now() - st).total_seconds() > 2:
             break
     print('Обработка')
-    ladder = []
-    while True:
-        for i in evos:
-            pass
+    rating, evos = {}, set(evos)
+    while len(evos) > 1:
+        evos, previous_evos = set(), evos
+        for evo in previous_evos:
+            rating[path[evo]] = min(rating.get(path[evo], inf), score(evo)) if evo.turn else max(rating.get(path[evo], -inf), score(evo))
+            evos.add(path[evo])
+            bprint(evo)
+        print(evos)
+        print(path)
+        print(rating)
+        print(rating.get(start))
+        input()
 
 
 if __name__ == '__main__':
